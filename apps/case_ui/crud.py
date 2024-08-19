@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from apps.case_ui import models, schemas
 from typing import List
 
+from apps.whole_conf import models as conf_models
+
 
 async def create_playwright(db: AsyncSession, data: schemas.PlaywrightIn, rows: int):
     """
@@ -55,13 +57,15 @@ async def get_playwright(
     if temp_name:
         if like:
             result = await db.execute(
-                select(models.PlaywrightTemp).where(
+                select(models.PlaywrightTemp, conf_models.ConfProject).filter(
+                    models.PlaywrightTemp.project_name == conf_models.ConfProject.id
+                ).where(
                     models.PlaywrightTemp.temp_name.like(f"%{temp_name}%")
                 ).order_by(
                     models.PlaywrightTemp.id.desc()
                 ).offset(size * (page - 1)).limit(size)
             )
-            return result.scalars().all()
+            return result.all()
 
         result = await db.execute(
             select(models.PlaywrightTemp).where(
@@ -71,11 +75,13 @@ async def get_playwright(
         return result.scalars().all()
 
     result = await db.execute(
-        select(models.PlaywrightTemp).order_by(
+        select(models.PlaywrightTemp, conf_models.ConfProject).filter(
+            models.PlaywrightTemp.project_name == conf_models.ConfProject.id
+        ).order_by(
             models.PlaywrightTemp.id.desc()
         ).offset(size * (page - 1)).limit(size)
     )
-    return result.scalars().all()
+    return result.all()
 
 
 async def get_playwright_data(db: AsyncSession, temp_id: int):
@@ -91,7 +97,7 @@ async def get_playwright_data(db: AsyncSession, temp_id: int):
     return result.scalars().first()
 
 
-async def update_playwright(db: AsyncSession, temp_id: int, project_name: str, temp_name: str, rows: int, text: str):
+async def update_playwright(db: AsyncSession, temp_id: int, project_name: int, temp_name: str, rows: int, text: str):
     """
     更新模板信息
     """
@@ -117,8 +123,8 @@ async def del_template_data(db: AsyncSession, temp_id: int):
     :return:
     """
     await db.execute(
-        delete(models.PlaywrightCaseDate).where(
-            models.PlaywrightCaseDate.id == temp_id
+        delete(models.PlaywrightTemp).where(
+            models.PlaywrightTemp.id == temp_id
         )
     )
     await db.commit()

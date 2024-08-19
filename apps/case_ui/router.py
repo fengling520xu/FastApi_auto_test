@@ -40,11 +40,10 @@ async def put_playwright(pd: schemas.PlaywrightIn, db: AsyncSession = Depends(ge
         if not temp_id:
             return await response_code.resp_404()
 
-        project_code = await conf_crud.get_project_code(db=db, id_=pd.project_name)
         await crud.update_playwright(
             db=db,
             temp_id=pd.id,
-            project_name=project_code,
+            project_name=pd.project_name,
             temp_name=pd.temp_name,
             rows=pd.text.count('\n'),
             text=pd.text,
@@ -79,15 +78,16 @@ async def get_playwright_list(
     for temp in temp_info:
         temp_list.append(
             {
-                'id': temp.id,
-                'project_name': await conf_crud.get_project_code(db=db, id_=temp.project_name),
-                'temp_name': temp.temp_name,
-                'rows': temp.rows,
-                'run_order': temp.run_order,
-                'success': temp.success,
-                'fail': temp.fail,
-                'created_at': temp.created_at,
-                'updated_at': temp.updated_at,
+                'id': temp[0].id,
+                'project_name': temp[0].project_name,
+                'code': temp[1].code,
+                'temp_name': temp[0].temp_name,
+                'rows': temp[0].rows,
+                'run_order': temp[0].run_order,
+                'success': temp[0].success,
+                'fail': temp[0].fail,
+                'created_at': temp[0].created_at,
+                'updated_at': temp[0].updated_at,
             }
         )
 
@@ -198,6 +198,7 @@ async def del_playwright_data(temp_id: int, db: AsyncSession = Depends(get_db)):
     删除UI数据列表
     """
     await crud.del_template_data(db=db, temp_id=temp_id)
+    await crud.del_play_case_data(db=db, temp_id=temp_id)
     shutil.rmtree(f"{setting['allure_path_ui']}/{temp_id}", ignore_errors=True)
     return await response_code.resp_200()
 
@@ -251,11 +252,10 @@ async def copy_case(temp_id: int, db: AsyncSession = Depends(get_db)):
     if not temp_info:
         return await response_code.resp_400(message='没有获取到这个用例id')
 
-    project_code = await conf_crud.get_project_code(db=db, id_=temp_info[0].project_name)
     await crud.create_playwright(
         db=db,
         data=schemas.PlaywrightIn(**{
-            'project_name': project_code,
+            'project_name': temp_info[0].project_name,
             'temp_name': temp_info[0].temp_name + ' - 副本',
             'text': temp_info[0].text,
         }),

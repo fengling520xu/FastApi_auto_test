@@ -40,8 +40,8 @@ class PlaywrightOut(PlaywrightIn):
 class PlaywrightOutTwo(BaseModel):
     id: Optional[int]
     project_name: int
+    code: str
     temp_name: str
-    project_name: str
     rows: int
     run_order: int
     success: int
