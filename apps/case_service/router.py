@@ -23,6 +23,7 @@ from .tool import GetCaseDataInfo, check, jsonpath_count, aim
 
 from apps.template import crud as temp_crud
 from apps.case_service import crud, schemas
+from apps.api_report import crud as report_crud
 from apps.case_ddt import crud as ddt_crud
 from apps.case_service.tool import insert, cover_insert
 from apps.template.tool import GenerateCase
@@ -281,6 +282,14 @@ async def del_case(case_id: int, db: AsyncSession = Depends(get_db)):
         return await response_code.resp_400()
     await crud.del_case_data(db=db, case_id=case_id)
     await ddt_crud.del_test_gather(db=db, case_id=case_id)
+
+    # 删除报告
+    report_list = await report_crud.get_api_list(db=db, case_id=case_id, page=1, size=999)
+    for i in report_list:
+        await report_crud.delete_api_detail(db=db, report_id=i.id)
+    else:
+        await db.commit()
+    await report_crud.delete_api_report(db=db, case_id=case_id)
 
     return await response_code.resp_200(message=f'用例{case_id}删除成功')
 
