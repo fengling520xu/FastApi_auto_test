@@ -413,7 +413,7 @@ class ExecutorService(ApiBase):
                 self._cookie[api['api_info']['host']] = await get_cookie(rep_type='aiohttp', response=res)
 
             # 轮询结束后，记录单接口执行结果
-            api['report']['result'] = [x['result'] for x in api['assert_info'][-1]][-1]
+            api['report']['result'] = self._assert_info(api['assert_info'][-1])
             api['report']['is_executor'] = True if not api['config'].get('skip') else False
             logger.info(
                 f"{api['api_info']['case_id']}-({api['api_info']['number']}/{len(api_list) - 1})-"
@@ -503,7 +503,15 @@ class ExecutorService(ApiBase):
             return [x[0] for x in sql_data] if sql_data else False
 
     @staticmethod
-    async def _case_status(api: dict, key_id: str, total: int, retry: bool = False):
+    def _assert_info(assert_info: list):
+        info_list = [x['result'] for x in assert_info]
+        if 2 in info_list:
+            return 2
+        if 1 in info_list:
+            return 1
+        return 0
+
+    async def _case_status(self, api: dict, key_id: str, total: int, retry: bool = False):
         """
         记录用例运行状态
         :param api:
@@ -553,7 +561,7 @@ class ExecutorService(ApiBase):
             'method': api['request_info']['method'],
             'status_code': api['response_info'][-1]['status_code'],
             'run_time': api['response_info'][-1]['response_time'],
-            'is_fail': {0: False, 1: True, 2: None}.get([x['result'] for x in api['assert_info'][-1]][-1]),
+            'is_fail': {0: False, 1: True, 2: None}.get(self._assert_info(api['assert_info'][-1])),
             'is_login': api['config'].get('is_login'),
             'description': api['api_info']['description'],
             'run_status': api['api_info']['run_status'],
