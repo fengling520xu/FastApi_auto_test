@@ -351,30 +351,40 @@ class ExecutorService(ApiBase):
 
             # ⬜️================== 🍉轮询发起请求，单接口的默认间隔时间超过5s，每次请求间隔5s进行轮询🍉 ==================⬜️ #
             sleep = api['config']['sleep']
+            res = None
             while not api['config'].get('skip'):
-                start_time = time.monotonic()
-                res = await sees.request(**api['request_info'], allow_redirects=False)
-
-                # 循环请求中的信息收集
                 response_info = {
-                    'status_code': res.status,
-                    'response_time': time.monotonic() - start_time,
+                    'status_code': 0,
+                    'response_time': 0,
                     'response': {},
-                    'headers': dict(res.headers),
+                    'headers': {},
                 }
+                start_time = time.monotonic()
                 try:
-                    response_info['response'] = await res.json(
-                        content_type='application/json' if not api['api_info']['file'] else None
-                    ) or {}
-                except (client_exceptions.ContentTypeError, json.decoder.JSONDecodeError):
-                    response_info['response'] = {}
-                api['response_info'].append(response_info)
-
-                # 断言结果
-                if not isinstance(response_info['response'], (dict, list)):
-                    response_info['response'] = [{'status_code': res.status}, response_info['response']]
+                    res = await sees.request(**api['request_info'], allow_redirects=False)
+                except client_exceptions.ClientError:
+                    response_info['response_time'] = time.monotonic() - start_time
+                    response_info['response']['status_code'] = 9999
+                    response_info['status_code'] = 9999
                 else:
-                    response_info['response']['status_code'] = res.status
+                    try:
+                        response_info['response'] = await res.json(
+                            content_type='application/json' if not api['api_info']['file'] else None
+                        ) or {}
+                    except (client_exceptions.ContentTypeError, json.decoder.JSONDecodeError):
+                        response_info['response'] = {}
+                    # 循环请求中的信息收集
+                    response_info['status_code'] = res.status
+                    response_info['response_time'] = time.monotonic() - start_time
+                    response_info['headers'] = dict(res.headers)
+
+                    # 断言结果
+                    if not isinstance(response_info['response'], (dict, list)):
+                        response_info['response'] = [{'status_code': res.status}, response_info['response']]
+                    else:
+                        response_info['response']['status_code'] = res.status
+
+                api['response_info'].append(response_info)
 
                 # 处理响应
                 result = await self._assert(check=api['check'], response=response_info['response'])
@@ -399,11 +409,10 @@ class ExecutorService(ApiBase):
             # ⬜️================== 🍉轮询结束请求，单接口的默认间隔时间超过5s，每次请求间隔5s进行轮询🍉 ==================⬜️ #
 
             # 记录cookie
-            if api['config'].get('is_login'):
+            if res and api['config'].get('is_login'):
                 self._cookie[api['api_info']['host']] = await get_cookie(rep_type='aiohttp', response=res)
 
             # 轮询结束后，记录单接口执行结果
-            # api['report']['result'] = 1 if [x for x in api['assert_info'][-1] if x['result'] == 1] else 0
             api['report']['result'] = [x['result'] for x in api['assert_info'][-1]][-1]
             api['report']['is_executor'] = True if not api['config'].get('skip') else False
             logger.info(
