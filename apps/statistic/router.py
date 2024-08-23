@@ -133,3 +133,17 @@ async def get_temp_count(db: AsyncSession = Depends(get_db)):
         'case_count': await case_crud.get_count(db=db),
         'case_today': await case_crud.get_count(db=db, today=True),
     }
+
+
+@statistic.get(
+    '/get/ui/count',
+    name='获取UI统计数据'
+)
+async def get_ui_count(db: AsyncSession = Depends(get_db)):
+    return {
+        'ui_count': await ui_crud.get_count(db=db),
+        'ui_today': await ui_crud.get_count(db=db, today=True),
+        'rows': sum(await ui_crud.get_rows(db=db)),
+        'rows_today': sum(await ui_crud.get_rows(db=db, today=True)),
+        'ddt_count': await ui_crud.get_ddt_count(db=db),
+    }

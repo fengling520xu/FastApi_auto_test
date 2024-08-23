@@ -7,6 +7,7 @@
 @Time: 2023/6/9-16:30
 """
 
+import datetime
 from sqlalchemy import func, select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from apps.case_ui import models, schemas
@@ -246,17 +247,26 @@ async def update_ui_temp_order(db: AsyncSession, temp_id: int, is_fail: bool, i:
     return db_case
 
 
-async def get_count(db: AsyncSession, temp_name: str = None):
+async def get_count(db: AsyncSession, temp_name: str = None, today: bool = None):
     """
     记数查询
     :param db:
     :param temp_name:
+    :param today:
     :return:
     """
     if temp_name:
         result = await db.execute(
             select(func.count(models.PlaywrightTemp.id)).where(
                 models.PlaywrightTemp.temp_name.like(f"%{temp_name}%")
+            )
+        )
+        return result.scalar()
+
+    if today:
+        result = await db.execute(
+            select(func.count(models.PlaywrightTemp.id)).where(
+                models.PlaywrightTemp.created_at >= datetime.datetime.now().date()
             )
         )
         return result.scalar()
@@ -277,3 +287,25 @@ async def get_ddt_count(db: AsyncSession):
         select(func.count(models.PlaywrightCaseDate.temp_id.distinct()))
     )
     return result.scalar()
+
+
+async def get_rows(db: AsyncSession, today: bool = None):
+    """
+    记数查询
+    :param db:
+    :param today:
+    :return:
+    """
+    if today:
+        result = await db.execute(
+            select(models.PlaywrightTemp.rows).where(
+                models.PlaywrightTemp.created_at >= datetime.datetime.now().date()
+            )
+        )
+        return result.scalars().all()
+
+    result = await db.execute(
+        select(models.PlaywrightTemp.rows)
+    )
+
+    return result.scalars().all()
