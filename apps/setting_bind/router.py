@@ -158,13 +158,12 @@ async def get_case_ui(setting_id: int, page: int = 1, size: int = 1000, db: Asyn
 
     case_info = []
     for case in test_case:
-        project_code = await conf_crud.get_project_code(db=db, id_=case.project_name)
         case_info.append(
             {
-                "project_name": project_code,
-                "case_name": case.temp_name,
-                "case_id": case.id,
-                "bind": True if case.id in ui_case_ids else False
+                "code": case[1].code,
+                "case_name": case[0].temp_name,
+                "case_id": case[0].id,
+                "bind": True if case[0].id in ui_case_ids else False
             }
         )
     case_info.sort(key=lambda i: i['bind'], reverse=True)
